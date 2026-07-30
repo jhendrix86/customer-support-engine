@@ -42,7 +42,7 @@ class Agent(Base):
     specialization = Column(JSON, nullable=True)  # List of specializations
     
     # Metadata
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -55,7 +55,7 @@ async def search_knowledge_base(
         
     except Exception as e:
         logger.error(f"Failed to search knowledge base: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/suggest/{ticket_id}")
@@ -84,7 +84,7 @@ async def suggest_articles(
         
     except Exception as e:
         logger.error(f"Failed to suggest articles: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/articles/{article_id}")
@@ -113,4 +113,4 @@ async def get_article(
         
     except Exception as e:
         logger.error(f"Failed to get article: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

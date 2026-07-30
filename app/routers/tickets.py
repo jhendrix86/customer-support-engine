@@ -103,7 +103,7 @@ async def resolve_ticket(
         
     except Exception as e:
         logger.error(f"Failed to resolve ticket: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{ticket_id}/escalate")
@@ -128,7 +128,7 @@ async def escalate_ticket(
         
     except Exception as e:
         logger.error(f"Failed to escalate ticket: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{ticket_id}/assign")
@@ -155,7 +155,7 @@ async def assign_ticket(
         
     except Exception as e:
         logger.error(f"Failed to assign ticket: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{ticket_id}")
@@ -188,7 +188,7 @@ async def get_ticket(
         
     except Exception as e:
         logger.error(f"Failed to get ticket: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/")
@@ -241,4 +241,4 @@ async def list_tickets(
         
     except Exception as e:
         logger.error(f"Failed to list tickets: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

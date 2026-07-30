@@ -62,7 +62,7 @@ async def get_support_metrics(
         
     except Exception as e:
         logger.error(f"Failed to get support metrics: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/performance")
@@ -103,7 +103,7 @@ async def get_agent_performance(
         
     except Exception as e:
         logger.error(f"Failed to get agent performance: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/satisfaction")
@@ -146,4 +146,4 @@ async def get_csat_scores(
         
     except Exception as e:
         logger.error(f"Failed to get CSAT scores: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

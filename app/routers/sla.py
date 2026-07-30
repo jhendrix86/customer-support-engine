@@ -43,7 +43,7 @@ async def get_sla_status(
         
     except Exception as e:
         logger.error(f"Failed to get SLA status: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/violations")
@@ -88,7 +88,7 @@ async def get_sla_violations(
         
     except Exception as e:
         logger.error(f"Failed to get SLA violations: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/escalate/{ticket_id}")
@@ -114,4 +114,4 @@ async def escalate_sla_violation(
         
     except Exception as e:
         logger.error(f"Failed to escalate SLA violation: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

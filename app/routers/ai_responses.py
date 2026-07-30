@@ -50,7 +50,7 @@ async def generate_ai_response(
         
     except Exception as e:
         logger.error(f"Failed to generate AI response: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/respond/{ticket_id}")
@@ -77,7 +77,7 @@ async def send_ai_response(
         
     except Exception as e:
         logger.error(f"Failed to send AI response: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/suggestions/{ticket_id}")
@@ -113,4 +113,4 @@ async def get_suggestions(
         
     except Exception as e:
         logger.error(f"Failed to get suggestions: {e}")
-        raise HTTPException(status_code=500, detail(str(e))
+        raise HTTPException(status_code=500, detail=str(e))

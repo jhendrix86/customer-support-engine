@@ -31,7 +31,7 @@ class KnowledgeArticle(Base):
     is_published = Column(Boolean, default=True)
     
     # Metadata
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
