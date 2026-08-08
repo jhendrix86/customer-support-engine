@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  customer-support-engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: customer-support-engine
+    ports:
+      - "8038:8038"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/support
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_MODEL=${AI_MODEL:-gpt-4}
+      - AUTO_RESPONSE_ENABLED=${AUTO_RESPONSE_ENABLED:-true}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SUPPORT_EMAIL=${SUPPORT_EMAIL:-support@company.com}
+      - KNOWLEDGE_BASE_URL=${KNOWLEDGE_BASE_URL}
+      - DEFAULT_SLA_HOURS=${DEFAULT_SLA_HOURS:-24}
+      - SLA_CRITICAL_HOURS=${SLA_CRITICAL_HOURS:-1}
+      - SLA_HIGH_HOURS=${SLA_HIGH_HOURS:-4}
+      - SLA_MEDIUM_HOURS=${SLA_MEDIUM_HOURS:-24}
+      - SLA_LOW_HOURS=${SLA_LOW_HOURS:-48}
+      - DEBUG=${DEBUG:-false}
+      - NOTIFICATION_ENGINE_URL=http://notification-engine:8037
+      - KNOWLEDGE_GRAPH_URL=http://kg-service:8034
+      - REVENUE_OPERATIONS_URL=http://revenue-operations-engine:8036
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - support-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: support-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=support
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - support-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: support-redis
+    networks:
+      - support-network
+    restart: unless-stopped
+
+networks:
+  support-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
