@@ -7,6 +7,8 @@ from .customer import Customer, CustomerTier
 from .agent import Agent, AgentStatus
 from .response import Response, ResponseType
 from .knowledge_article import KnowledgeArticle
+from .tenant import Tenant
+from .tenant_base import TenantBase
 
 __all__ = [
     'Ticket',
@@ -19,5 +21,7 @@ __all__ = [
     'AgentStatus',
     'Response',
     'ResponseType',
-    'KnowledgeArticle'
+    'KnowledgeArticle',
+    'Tenant',
+    'TenantBase'
 ]

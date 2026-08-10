@@ -10,6 +10,7 @@ import uuid
 import enum
 
 from app.database import Base
+from app.models.tenant_base import TenantBase
 
 
 class AgentStatus(str, enum.Enum):
@@ -20,7 +21,7 @@ class AgentStatus(str, enum.Enum):
     OFFLINE = "offline"
 
 
-class Agent(Base):
+class Agent(TenantBase, Base):
     """Agent model"""
     __tablename__ = "agents"
     

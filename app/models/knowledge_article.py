@@ -8,9 +8,10 @@ from datetime import datetime
 import uuid
 
 from app.database import Base
+from app.models.tenant_base import TenantBase
 
 
-class KnowledgeArticle(Base):
+class KnowledgeArticle(TenantBase, Base):
     """Knowledge article model"""
     __tablename__ = "knowledge_articles"
     

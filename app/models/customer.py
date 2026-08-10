@@ -10,6 +10,7 @@ import uuid
 import enum
 
 from app.database import Base
+from app.models.tenant_base import TenantBase
 
 
 class CustomerTier(str, enum.Enum):
@@ -20,7 +21,7 @@ class CustomerTier(str, enum.Enum):
     ENTERPRISE = "enterprise"
 
 
-class Customer(Base):
+class Customer(TenantBase, Base):
     """Customer model"""
     __tablename__ = "customers"
     

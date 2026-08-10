@@ -10,6 +10,7 @@ import uuid
 import enum
 
 from app.database import Base
+from app.models.tenant_base import TenantBase
 
 
 class ResponseType(str, enum.Enum):
@@ -19,7 +20,7 @@ class ResponseType(str, enum.Enum):
     SYSTEM = "system"
 
 
-class Response(Base):
+class Response(TenantBase, Base):
     """Response model"""
     __tablename__ = "responses"
     
