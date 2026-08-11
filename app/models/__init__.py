@@ -8,7 +8,7 @@ from .agent import Agent, AgentStatus
 from .response import Response, ResponseType
 from .knowledge_article import KnowledgeArticle
 from .tenant import Tenant
-from .tenant_base import TenantBase
+from .tenant_base import TenantBase, apply_tenant_context
 
 __all__ = [
     'Ticket',
@@ -23,5 +23,6 @@ __all__ = [
     'ResponseType',
     'KnowledgeArticle',
     'Tenant',
-    'TenantBase'
+    'TenantBase',
+    'apply_tenant_context'
 ]
