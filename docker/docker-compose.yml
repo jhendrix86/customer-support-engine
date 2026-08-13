@@ -10,7 +10,7 @@ services:
       - "8038:8038"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/support
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379/2
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AI_MODEL=${AI_MODEL:-gpt-4}
       - AUTO_RESPONSE_ENABLED=${AUTO_RESPONSE_ENABLED:-true}
@@ -26,36 +26,13 @@ services:
       - NOTIFICATION_ENGINE_URL=http://notification-engine:8037
       - KNOWLEDGE_GRAPH_URL=http://kg-service:8034
       - REVENUE_OPERATIONS_URL=http://revenue-operations-engine:8036
-    depends_on:
-      - postgres
-      - redis
+    # No depends_on here - postgres/redis moved to shared infra
+    # (deploy/docker-compose.infra.yml), a different compose project.
+    # Bring that up first: deploy/03-build-and-up.sh infra-up
     networks:
-      - support-network
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: support-postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=support
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - support-network
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: support-redis
-    networks:
-      - support-network
+      - os42-shared
     restart: unless-stopped
 
 networks:
-  support-network:
-    driver: bridge
-
-volumes:
-  postgres-data:
+  os42-shared:
+    external: true
