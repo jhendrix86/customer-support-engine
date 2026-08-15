@@ -1,8 +1,11 @@
 """
-AI response router
+AI response router - real OpenAI-backed drafting (app/services/ai_responder.py)
+and real knowledge-base suggestions, instead of a fixed canned reply.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import datetime
@@ -10,6 +13,11 @@ from pydantic import BaseModel
 from loguru import logger
 
 from app.database import get_db
+from app.models.response import Response, ResponseType
+from app.models.ticket import Ticket, TicketStatus
+from app.models.tenant_base import apply_tenant_context
+from app.services.ai_responder import AIResponder
+from app.services.kb_search import search_articles
 
 router = APIRouter()
 
@@ -18,36 +26,56 @@ class GenerateResponseRequest(BaseModel):
     """Request to generate AI response"""
     ticket_id: str
     customer_message: str
-    context: Optional[dict] = None
+    context: Optional[str] = None
+
+
+def get_ai_responder(request: Request) -> AIResponder:
+    return request.app.state.ai_responder
+
+
+async def _get_ticket_or_404(db: AsyncSession, ticket_id: str) -> Ticket:
+    try:
+        ticket_uuid = uuid.UUID(ticket_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"Ticket '{ticket_id}' not found")
+
+    ticket = await db.get(Ticket, ticket_uuid)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail=f"Ticket '{ticket_id}' not found")
+    return ticket
 
 
 @router.post("/generate-response")
 async def generate_ai_response(
     request: GenerateResponseRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    ai_responder: AIResponder = Depends(get_ai_responder),
 ):
-    """Generate AI response for ticket"""
+    """Generate an AI-drafted response for a real ticket - a preview, not persisted/sent"""
     try:
+        await _get_ticket_or_404(db, request.ticket_id)
         logger.info(f"Generating AI response for ticket {request.ticket_id}")
-        
-        # In production, this would call OpenAI API
-        # For now, return a mock response
+
+        result = await ai_responder.generate_response(request.customer_message, request.context)
+        matches = await search_articles(db, request.customer_message, limit=3)
+
         response = {
             "ticket_id": request.ticket_id,
-            "response": "I understand your payment processing issue. Let me help you resolve this. First, please check if your payment method is valid and has sufficient funds. If the issue persists, I can escalate this to our payment team for immediate assistance.",
-            "confidence_score": 0.85,
+            "success": result["success"],
+            "response": result.get("body"),
+            "error": result.get("error"),
             "suggested_articles": [
-                {"id": "kb_001", "title": "Payment Processing Troubleshooting"},
-                {"id": "kb_002", "title": "Payment Method Issues"}
+                {"id": str(m["article"].id), "title": m["article"].title} for m in matches
             ],
-            "sentiment": "frustrated",
-            "ai_model": "gpt-4",
-            "generated_at": datetime.utcnow().isoformat()
+            "ai_model": result["model"],
+            "generated_at": datetime.utcnow().isoformat(),
         }
-        
-        logger.info(f"AI response generated for ticket {request.ticket_id}")
+
+        logger.info(f"AI response {'generated' if result['success'] else 'failed'} for ticket {request.ticket_id}")
         return response
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate AI response: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -56,61 +84,76 @@ async def generate_ai_response(
 @router.post("/respond/{ticket_id}")
 async def send_ai_response(
     ticket_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    ai_responder: AIResponder = Depends(get_ai_responder),
 ):
-    """Send AI response to customer"""
+    """Generate and persist a real AI response to a ticket, using its own message as the basis"""
     try:
+        ticket = await _get_ticket_or_404(db, ticket_id)
         logger.info(f"Sending AI response for ticket {ticket_id}")
-        
-        # In production, this would save response and send via channel
-        # For now, return a mock response
-        response = {
+
+        result = await ai_responder.generate_response(ticket.message)
+        if not result["success"]:
+            logger.warning(f"AI response for ticket {ticket_id} failed: {result.get('error')}")
+            return {"ticket_id": ticket_id, "status": "failed", "error": result.get("error")}
+
+        matches = await search_articles(db, ticket.message, limit=3)
+
+        response = Response(
+            ticket_id=ticket.id,
+            message=result["body"],
+            response_type=ResponseType.AI_GENERATED,
+            ai_model=result["model"],
+            knowledge_articles_used=[str(m["article"].id) for m in matches] or None,
+        )
+        apply_tenant_context(response)
+        db.add(response)
+
+        ticket.status = TicketStatus.WAITING_CUSTOMER
+
+        await db.commit()
+        await db.refresh(response)
+
+        logger.info(f"AI response sent for ticket {ticket_id}: {response.id}")
+        return {
             "ticket_id": ticket_id,
-            "response_id": "resp_123",
+            "response_id": str(response.id),
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
-            "response_type": "ai_generated"
+            "message": response.message,
+            "sent_at": response.created_at.isoformat(),
+            "response_type": response.response_type.value,
         }
-        
-        logger.info(f"AI response sent for ticket {ticket_id}")
-        return response
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to send AI response: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/suggestions/{ticket_id}")
-async def get_suggestions(
-    ticket_id: str,
-    db: AsyncSession = Depends(get_db)
-):
-    """Get knowledge base suggestions for ticket"""
+async def get_suggestions(ticket_id: str, db: AsyncSession = Depends(get_db)):
+    """Get real knowledge base suggestions for a ticket"""
     try:
-        logger.info(f"Getting suggestions for ticket {ticket_id}")
-        
-        # In production, this would search knowledge base
-        # For now, return a mock response
-        suggestions = [
-            {
-                "article_id": "kb_001",
-                "title": "Payment Processing Troubleshooting",
-                "relevance": 0.92,
-                "excerpt": "Check your payment method validity and available funds..."
-            },
-            {
-                "article_id": "kb_002",
-                "title": "Common Payment Issues",
-                "relevance": 0.85,
-                "excerpt": "Most payment issues are resolved by updating payment methods..."
-            }
-        ]
-        
+        ticket = await _get_ticket_or_404(db, ticket_id)
+
+        matches = await search_articles(db, f"{ticket.subject} {ticket.message}", limit=5)
+
         return {
             "ticket_id": ticket_id,
-            "suggestions": suggestions
+            "suggestions": [
+                {
+                    "article_id": str(m["article"].id),
+                    "title": m["article"].title,
+                    "relevance": m["relevance"],
+                    "excerpt": m["article"].content[:200],
+                }
+                for m in matches
+            ],
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to get suggestions: {e}")
         raise HTTPException(status_code=500, detail=str(e))

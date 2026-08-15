@@ -15,7 +15,7 @@ async def test_app_instantiation():
 @pytest.mark.asyncio
 async def test_models_import():
     """Verify core models import without error"""
-    from app.models import Ticket, Conversation, Knowledge
+    from app.models import Ticket, Response, KnowledgeArticle
     assert Ticket is not None
-    assert Conversation is not None
-    assert Knowledge is not None
+    assert Response is not None
+    assert KnowledgeArticle is not None
