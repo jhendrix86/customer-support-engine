@@ -14,15 +14,15 @@ from typing import Optional
 from app.config import settings
 from app.models.ticket import TicketPriority
 
-_HOURS_BY_PRIORITY = {
-    TicketPriority.CRITICAL: settings.sla_critical_hours,
-    TicketPriority.HIGH: settings.sla_high_hours,
-    TicketPriority.MEDIUM: settings.sla_medium_hours,
-    TicketPriority.LOW: settings.sla_low_hours,
-}
-
-
 def compute_sla_deadline(priority: TicketPriority, from_time: Optional[datetime] = None) -> datetime:
     from_time = from_time or datetime.utcnow()
-    hours = _HOURS_BY_PRIORITY.get(priority, settings.default_sla_hours)
+    
+    hours_map = {
+        TicketPriority.CRITICAL: settings.sla_critical_hours,
+        TicketPriority.HIGH: settings.sla_high_hours,
+        TicketPriority.MEDIUM: settings.sla_medium_hours,
+        TicketPriority.LOW: settings.sla_low_hours,
+    }
+    
+    hours = hours_map.get(priority, settings.default_sla_hours)
     return from_time + timedelta(hours=hours)

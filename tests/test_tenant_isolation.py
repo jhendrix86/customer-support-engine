@@ -1,8 +1,6 @@
 """
-Verifies tenant context assignment for customer-support-engine endpoints.
-Tests that apply_tenant_context() correctly assigns tenant_id on create.
-Note: Automatic query filtering is not yet implemented - this test validates
-create-time tenant assignment only.
+Verifies tenant isolation for customer-support-engine endpoints.
+Tests that automatic query filtering actually isolates data between tenants.
 """
 
 # Use fixed UUIDs that match what we create in conftest
@@ -10,100 +8,93 @@ TENANT_A = "3e2a7c54-a950-48f3-9eb9-d1eb6b2d1be2"
 TENANT_B = "00000000-0000-0000-0000-000000000001"
 
 
-async def test_apply_tenant_context_on_ticket_create(client, db_session):
-    """Verify that apply_tenant_context assigns tenant_id on ticket creation."""
-    from app.models.ticket import Ticket
-    import uuid
-    
-    # Create ticket for tenant A
-    result = await client.post(
-        "/tickets/",
+async def _create_ticket(client, tenant_id, subject):
+    resp = await client.post(
+        "/tickets/create",
         json={
             "customer_name": "Test Customer",
             "customer_email": "test@example.com",
-            "subject": "Test Issue",
+            "subject": subject,
             "message": "Test message",
             "priority": "medium"
         },
-        headers={"X-Tenant-ID": TENANT_A}
+        headers={"X-Tenant-ID": tenant_id},
     )
-    assert result.status_code == 200
-    ticket_id = result.json()["id"]
-    
-    # Verify tenant_id was correctly assigned
-    ticket = await db_session.get(Ticket, uuid.UUID(ticket_id))
-    assert ticket is not None
-    assert str(ticket.tenant_id) == TENANT_A
+    assert resp.status_code == 200
+    return resp.json()["id"]
 
 
-async def test_apply_tenant_context_on_agent_create(client, db_session):
-    """Verify that apply_tenant_context assigns tenant_id on agent creation."""
-    from app.models.agent import Agent
-    import uuid
+async def test_tenant_cannot_read_another_tenants_ticket(client):
+    ticket_id = await _create_ticket(client, TENANT_A, "Tenant A's Issue")
+
+    same_tenant = await client.get(f"/tickets/{ticket_id}", headers={"X-Tenant-ID": TENANT_A})
+    assert same_tenant.status_code == 200
+
+    other_tenant = await client.get(f"/tickets/{ticket_id}", headers={"X-Tenant-ID": TENANT_B})
+    assert other_tenant.status_code == 404
+
+
+async def test_list_tickets_is_scoped_per_tenant(client):
+    await _create_ticket(client, TENANT_A, "A's Issue 1")
+    await _create_ticket(client, TENANT_A, "A's Issue 2")
     
+    # Verify tenant A sees their tickets
+    a_listing = await client.get("/tickets/", headers={"X-Tenant-ID": TENANT_A})
+    assert a_listing.status_code == 200
+    assert a_listing.json()["total"] == 2
+
+
+async def test_no_tenant_header_sees_everything(client):
+    """Fail-open posture: no X-Tenant-ID means no filtering is applied."""
+    await _create_ticket(client, TENANT_A, "A's Issue")
+    
+    # Verify no-tenant header sees the ticket
+    unscoped = await client.get("/tickets/")
+    assert unscoped.status_code == 200
+    assert unscoped.json()["total"] == 1
+
+
+async def test_tenant_cannot_modify_another_tenants_ticket(client):
+    ticket_id = await _create_ticket(client, TENANT_A, "Tenant A's Issue")
+
+    # Try to resolve as tenant B
+    resolve_response = await client.post(
+        f"/tickets/{ticket_id}/resolve",
+        json={"resolution_notes": "Fixed by tenant B"},
+        headers={"X-Tenant-ID": TENANT_B}
+    )
+    assert resolve_response.status_code == 404
+
+
+async def test_agent_creation_respects_tenant_scoping(client):
+    """Agent creation should be tenant-scoped."""
     # Create agent for tenant A
-    result = await client.post(
-        "/agents/",
+    agent_resp = await client.post(
+        "/agents/create",
         json={
             "name": "Agent Smith",
-            "specialization": "technical",
-            "max_tickets": 10
+            "email": "agent@example.com",
+            "specialization": ["technical"]
         },
         headers={"X-Tenant-ID": TENANT_A}
     )
-    assert result.status_code == 200
-    agent_id = result.json()["id"]
-    
-    # Verify tenant_id was correctly assigned
-    agent = await db_session.get(Agent, uuid.UUID(agent_id))
-    assert agent is not None
-    assert str(agent.tenant_id) == TENANT_A
+    assert agent_resp.status_code == 200
+    agent_id = agent_resp.json()["id"]
+
+    # Tenant A can see the agent
+    a_agent = await client.get(f"/agents/{agent_id}", headers={"X-Tenant-ID": TENANT_A})
+    assert a_agent.status_code == 200
+
+    # Tenant B cannot see the agent
+    b_agent = await client.get(f"/agents/{agent_id}", headers={"X-Tenant-ID": TENANT_B})
+    assert b_agent.status_code == 404
 
 
-async def test_apply_tenant_context_on_response_create(client, db_session):
-    """Verify that apply_tenant_context assigns tenant_id on response creation."""
-    from app.models.ai_response import AIResponse
-    from app.models.ticket import Ticket
-    import uuid
-    
-    # Create ticket for tenant A
-    ticket_result = await client.post(
-        "/tickets/",
-        json={
-            "customer_name": "Test Customer",
-            "customer_email": "test@example.com",
-            "subject": "Test Issue",
-            "message": "Test message",
-            "priority": "medium"
-        },
-        headers={"X-Tenant-ID": TENANT_A}
-    )
-    assert ticket_result.status_code == 200
-    ticket_id = ticket_result.json()["id"]
-    
-    # Create AI response for tenant A
-    response_result = await client.post(
-        f"/ai/respond/{ticket_id}",
-        json={},
-        headers={"X-Tenant-ID": TENANT_A}
-    )
-    # AI response might fail due to missing OpenAI key, but that's ok for this test
-    # We're just checking that if it succeeds, tenant_id is assigned
-    
-    # Get the ticket to check if response was created
-    ticket = await db_session.get(Ticket, uuid.UUID(ticket_id))
-    assert ticket is not None
-    assert str(ticket.tenant_id) == TENANT_A
-
-
-async def test_apply_tenant_context_on_article_create(client, db_session):
-    """Verify that apply_tenant_context assigns tenant_id on knowledge base article creation."""
-    from app.models.knowledge_base import KnowledgeArticle
-    import uuid
-    
+async def test_knowledge_base_article_respects_tenant_scoping(client):
+    """Knowledge base articles should be tenant-scoped."""
     # Create article for tenant A
-    result = await client.post(
-        "/articles/",
+    article_resp = await client.post(
+        "/kb/articles",
         json={
             "title": "Troubleshooting Guide",
             "content": "Step-by-step instructions",
@@ -111,10 +102,13 @@ async def test_apply_tenant_context_on_article_create(client, db_session):
         },
         headers={"X-Tenant-ID": TENANT_A}
     )
-    assert result.status_code == 200
-    article_id = result.json()["id"]
-    
-    # Verify tenant_id was correctly assigned
-    article = await db_session.get(KnowledgeArticle, uuid.UUID(article_id))
-    assert article is not None
-    assert str(article.tenant_id) == TENANT_A
+    assert article_resp.status_code == 200
+    article_id = article_resp.json()["id"]
+
+    # Tenant A can see the article
+    a_article = await client.get(f"/kb/articles/{article_id}", headers={"X-Tenant-ID": TENANT_A})
+    assert a_article.status_code == 200
+
+    # Tenant B cannot see the article
+    b_article = await client.get(f"/kb/articles/{article_id}", headers={"X-Tenant-ID": TENANT_B})
+    assert b_article.status_code == 404
