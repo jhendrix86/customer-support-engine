@@ -3,7 +3,7 @@ Knowledge article models
 """
 
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, ForeignKey, Text, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from datetime import datetime
 import uuid
 
@@ -15,7 +15,7 @@ class KnowledgeArticle(TenantBase, Base):
     """Knowledge article model"""
     __tablename__ = "knowledge_articles"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Article details
     title = Column(String(500), nullable=False)

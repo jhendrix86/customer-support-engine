@@ -3,7 +3,7 @@ Response models
 """
 
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, Enum, ForeignKey, Text, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -24,9 +24,9 @@ class Response(TenantBase, Base):
     """Response model"""
     __tablename__ = "responses"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    ticket_id = Column(UUID(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticket_id = Column(Uuid(as_uuid=True), ForeignKey("tickets.id"), nullable=False)
+    agent_id = Column(Uuid(as_uuid=True), ForeignKey("agents.id"), nullable=True)
     
     # Response details
     message = Column(Text, nullable=False)

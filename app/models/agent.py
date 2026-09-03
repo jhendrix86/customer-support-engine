@@ -3,7 +3,7 @@ Agent models
 """
 
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, Enum, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -25,7 +25,7 @@ class Agent(TenantBase, Base):
     """Agent model"""
     __tablename__ = "agents"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Agent information
     name = Column(String(255), nullable=False)

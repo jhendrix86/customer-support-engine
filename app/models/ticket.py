@@ -3,7 +3,7 @@ Ticket models
 """
 
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, Enum, ForeignKey, Text, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -44,9 +44,9 @@ class Ticket(TenantBase, Base):
     """Ticket model"""
     __tablename__ = "tickets"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    customer_id = Column(UUID(as_uuid=True), ForeignKey("customers.id"), nullable=False)
-    assigned_agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    customer_id = Column(Uuid(as_uuid=True), ForeignKey("customers.id"), nullable=False)
+    assigned_agent_id = Column(Uuid(as_uuid=True), ForeignKey("agents.id"), nullable=True)
     
     # Ticket details
     subject = Column(String(500), nullable=False)
