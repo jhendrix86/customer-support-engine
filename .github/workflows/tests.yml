@@ -24,11 +24,10 @@ jobs:
           pip install pytest pytest-asyncio pytest-timeout
 
       - name: Run tests
-        # Redirect to a file, not the pipe: if the app leaves a non-daemon
-        # background thread / undisposed async engine or client alive after
-        # the test session, it holds the step's stdout pipe open in CI and
-        # hangs the step until the job cap. A file fd doesn't block step exit.
-        run: |
-          pytest -q --timeout=120 --timeout-method=thread > pytest.out 2>&1; rc=$?
-          cat pytest.out
-          exit $rc
+        # tests/conftest.py's session _dispose_async_engine fixture is the
+        # real unhang (aiosqlite's non-daemon worker thread otherwise keeps
+        # the pytest process alive past the last test -> CI step waits on
+        # the stdout pipe to the job cap). --timeout / timeout-minutes are
+        # just backstops so any future hang self-diagnoses instead of
+        # burning the full job budget.
+        run: pytest -q --timeout=120 --timeout-method=thread
