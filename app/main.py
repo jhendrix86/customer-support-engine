@@ -11,7 +11,7 @@ from loguru import logger
 import os
 
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, wait_for_database
 from app.routers import tickets, agents, ai_responses, knowledge_base, sla, analytics
 from app.middleware.tenant import tenant_middleware
 from app.services.ai_responder import AIResponder
@@ -23,6 +23,12 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Customer Support Engine...")
 
     # Initialize database
+
+    # Wait out any post-reboot window where Postgres isn't accepting
+    # connections yet before the first query. Without this the container
+    # crash-loops instead of self-healing (BA-13).
+    await wait_for_database()
+
     await init_db()
 
     # One AIResponder per process, exposed via app.state so routers can
